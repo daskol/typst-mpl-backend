@@ -17,18 +17,8 @@ jobs:
     runs-on: 'ubuntu-24.04'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-
-      - name: Pull all PR commits
-        if: github.event.pull_request
-        run: |
-          # Un-shallow refs.
-          git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-          # Deepen topic branch; checkout topic branch.
-          git fetch origin ${{ github.ref }}:${{ github.head_ref }} \
-            --depth=$(( ${{ github.event.pull_request.commits }} + 1 ))
-          git checkout ${{ github.event.pull_request.head.ref }}
-          # Fetch main for common origin.
-          git fetch origin main:main --depth=100
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.12 (default)
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
@@ -41,8 +31,8 @@ jobs:
         if: github.event.pull_request
         with:
           extra_args: >
-            --from-ref "$(git merge-base main HEAD)"
-            --to-ref "${{ github.head_ref }}"
+            --from-ref "${{ github.event.pull_request.base.sha }}"
+            --to-ref HEAD
 
       - name: Run pre-commit on merge
         uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
