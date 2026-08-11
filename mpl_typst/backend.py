@@ -484,16 +484,26 @@ class TypstRenderer(RendererBase):
         for i in range(vertices.shape[0] - 1):
             # TODO(@daskol): What about shapes coordinates, facecolors, and
             # edgecolors?
-            facecolor = [Scalar(c * 100, '%') for c in facecolors[i]]
             for j in range(vertices.shape[1] - 1):
+                facecolor = [Scalar(c * 100, '%') for c in
+                    facecolors[(vertices.shape[1] - 1) * i + j]]
+
                 # Create filling color.
                 fill = Call('rgb', *facecolor)
 
-                # Create stroke if line width is given.
-                if edgecolors:
-                    edgecolor = [Scalar(c * 100, '%') for c in edgecolors[i]]
-                else:
-                    edgecolor = facecolor
+                # Create stroke if edgecolors is given.
+                edgecolor = [0, 0, 0, 0]
+                if edgecolors.size > 0:
+                    if edgecolors.shape == facecolors.shape:
+                        edgecolor = [Scalar(c * 100, '%') for c in
+                            edgecolors[(vertices.shape[1] - 1) * i + j]]
+                    else:
+                        num_colors = edgecolors.shape[0]
+                        color_index = \
+                            ((vertices.shape[1] - 1) * i + j) % num_colors
+                        edgecolor = [Scalar(c * 100, '%') for c in
+                            edgecolors[color_index]]
+
                 stroke = None
                 if (lw := gc.get_linewidth()) > 0:
                     paint = Call('rgb', *edgecolor)
@@ -506,10 +516,17 @@ class TypstRenderer(RendererBase):
                 quad = vertices[i:i + 2, j:j + 2]
                 quad = quad.reshape(4, 2)
                 quad = quad[[2, 3, 1, 0]]
-                line = Call('path', fill=fill, stroke=stroke, closed=True)
+                line = Call('curve', fill=fill, stroke=stroke)
+                firstPoint = True
                 for coords in quad:
-                    point = Array(coords)
+                    if firstPoint:
+                        firstPoint = False
+                        point = Call('curve.move', Array(coords))
+                    else:
+                        point = Call('curve.line', Array(coords))
+
                     line.args.append(point)
+                line.args.append(Call('curve.close'))
 
                 # Put on canvas with respect of the origin.
                 place = Call('place', 'top + left', line,
